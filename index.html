@@ -1,1 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Squad Server Alerter</title>
+    <style>
+        body { font-family: sans-serif; padding: 10px; color: white; background-color: #222; }
+        .section { margin-bottom: 20px; }
+        .region-group { margin-bottom: 15px; }
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; color: black; }
+        #results { margin-top: 20px; padding: 10px; background: #444; border-radius: 5px; display: none; word-wrap: break-word; }
+    </style>
+</head>
+<body>
+    <h1>Squad Server Alerter</h1>
+    
+    <div id="filters">
+        <div class="section">
+            <h3>Player Count (0-99)</h3>
+            <input type="number" id="playerCount" min="0" max="99">
+        </div>
 
+        <div class="section">
+            <h3>Server Regions</h3>
+            <label><input type="checkbox" name="region" value="Europe"> Europe</label>
+            <label><input type="checkbox" name="region" value="Asia"> Asia</label>
+            <label><input type="checkbox" name="region" value="North America"> North America</label>
+            <label><input type="checkbox" name="region" value="Australia"> Australia</label>
+            <label><input type="checkbox" name="region" value="Africa"> Africa</label>
+            <label><input type="checkbox" name="region" value="South America"> South America</label>
+        </div>
+
+        <div class="section">
+            <h3>Game Modes</h3>
+            <label><input type="checkbox" name="mode" value="RAAS"> RAAS</label>
+            <label><input type="checkbox" name="mode" value="AAS"> AAS</label>
+            <label><input type="checkbox" name="mode" value="Invasion"> Invasion</label>
+            <label><input type="checkbox" name="mode" value="Seed"> Seed</label>
+            <label><input type="checkbox" name="mode" value="Skirmish"> Skirmish</label>
+            <label><input type="checkbox" name="mode" value="Destruction"> Destruction</label>
+            <label><input type="checkbox" name="mode" value="Insurgency"> Insurgency</label>
+            <label><input type="checkbox" name="mode" value="Territory Control"> Territory Control</label>
+        </div>
+
+        <div class="section">
+            <h3>Maps</h3>
+            <div class="region-group">
+                <h4>Europe</h4>
+                <div class="grid">
+                    <label><input type="checkbox" name="map" value="Harju"> Harju</label>
+                    <label><input type="checkbox" name="map" value="Skorpo"> Skorpo</label>
+                    <label><input type="checkbox" name="map" value="Belaya"> Belaya</label>
+                    <label><input type="checkbox" name="map" value="Black Coast"> Black Coast</label>
+                    <label><input type="checkbox" name="map" value="Fool's Road"> Fool's Road</label>
+                    <label><input type="checkbox" name="map" value="Gorodok"> Gorodok</label>
+                    <label><input type="checkbox" name="map" value="Mestia"> Mestia</label>
+                    <label><input type="checkbox" name="map" value="Narva"> Narva</label>
+                    <label><input type="checkbox" name="map" value="Yehorivka"> Yehorivka</label>
+                </div>
+            </div>
+            <div class="region-group">
+                <h4>North America</h4>
+                <div class="grid">
+                    <label><input type="checkbox" name="map" value="Manicouagan"> Manicouagan</label>
+                    <label><input type="checkbox" name="map" value="Goose Bay"> Goose Bay</label>
+                </div>
+            </div>
+            <div class="region-group">
+                <h4>Southern-/Eastern Asia</h4>
+                <div class="grid">
+                    <label><input type="checkbox" name="map" value="Sanxian Islands"> Sanxian Islands</label>
+                    <label><input type="checkbox" name="map" value="Chora"> Chora</label>
+                    <label><input type="checkbox" name="map" value="Kamdesh Highlands"> Kamdesh Highlands</label>
+                    <label><input type="checkbox" name="map" value="Kohat Toi"> Kohat Toi</label>
+                    <label><input type="checkbox" name="map" value="Kokan"> Kokan</label>
+                    <label><input type="checkbox" name="map" value="Lashkar Valley"> Lashkar Valley</label>
+                    <label><input type="checkbox" name="map" value="Logar Valley"> Logar Valley</label>
+                    <label><input type="checkbox" name="map" value="Sumari Bala"> Sumari Bala</label>
+                </div>
+            </div>
+            <div class="region-group">
+                <h4>Middle East</h4>
+                <div class="grid">
+                    <label><input type="checkbox" name="map" value="Al Basrah"> Al Basrah</label>
+                    <label><input type="checkbox" name="map" value="Anvil"> Anvil</label>
+                    <label><input type="checkbox" name="map" value="Fallujah"> Fallujah</label>
+                    <label><input type="checkbox" name="map" value="Mutaha"> Mutaha</label>
+                    <label><input type="checkbox" name="map" value="Tallil Outskirts"> Tallil Outskirts</label>
+                </div>
+            </div>
+            <div class="region-group">
+                <h4>Training</h4>
+                <div class="grid">
+                    <label><input type="checkbox" name="map" value="Jensen's Range"> Jensen's Range</label>
+                    <label><input type="checkbox" name="map" value="Pacific Proving Grounds"> Pacific Proving Grounds</label>
+                </div>
+            </div>
+        </div>
+        
+        <button onclick="filterServers()">Filter</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        const STORAGE_KEY = 'squadServerAlerterState';
+
+        const defaultSettings = {
+            playerCount: "40",
+            regions: ["Europe"],
+            modes: ["RAAS", "AAS", "Invasion", "Insurgency"],
+            maps: [
+                "Harju", "Skorpo", "Belaya", "Black Coast", "Fool's Road", "Gorodok", "Mestia", "Narva", "Yehorivka", 
+                "Manicouagan", "Goose Bay", "Sanxian Islands", "Al Basrah"
+            ]
+        };
+
+        function saveState() {
+            const state = {
+                playerCount: document.getElementById('playerCount').value,
+                regions: Array.from(document.querySelectorAll('input[name="region"]:checked')).map(cb => cb.value),
+                modes: Array.from(document.querySelectorAll('input[name="mode"]:checked')).map(cb => cb.value),
+                maps: Array.from(document.querySelectorAll('input[name="map"]:checked')).map(cb => cb.value)
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            const state = saved ? JSON.parse(saved) : defaultSettings;
+
+            document.getElementById('playerCount').value = state.playerCount;
+            
+            document.querySelectorAll('input[name="region"]').forEach(cb => {
+                cb.checked = state.regions.includes(cb.value);
+            });
+            document.querySelectorAll('input[name="mode"]').forEach(cb => {
+                cb.checked = state.modes.includes(cb.value);
+            });
+            document.querySelectorAll('input[name="map"]').forEach(cb => {
+                cb.checked = state.maps.includes(cb.value);
+            });
+        }
+
+        function init() {
+            loadState();
+            document.querySelectorAll('input').forEach(input => {
+                input.addEventListener('change', saveState);
+            });
+        }
+
+        window.onload = init;
+
+        // NEW DIRECT FETCH LOGIC
+        function filterServers() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.style.display = "block";
+            resultsDiv.innerText = "Querying Battlemetrics directly from your browser... Please wait.";
+            
+            const url = 'https://api.battlemetrics.com/servers?filter%5Bgame%5D=squad&page%5Bsize%5D=50';
+            
+            fetch(url, {
+                headers: {
+                    "Accept": "application/vnd.api+json"
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("HTTP Status " + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                resultsDiv.innerHTML = "<strong>Success!</strong> Retrieved " + data.data.length + " servers from Battlemetrics. (Filtering logic goes here).";
+                console.log("Raw Server Data:", data.data);
+            })
+            .catch(error => {
+                resultsDiv.innerHTML = "<strong>Fetch Failed:</strong> " + error.message;
+                console.error("Fetch error details:", error);
+            });
+        }
+    </script>
+</body>
+</html>
