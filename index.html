@@ -160,57 +160,42 @@
         function filterServers() {
             const resultsDiv = document.getElementById('results');
             resultsDiv.style.display = "block";
-            resultsDiv.innerHTML = "Querying Battlemetrics... Check your Browser Console (F12) for debugging details.";
+            resultsDiv.innerHTML = "Fetching and filtering servers...";
 
-            const maxPlayers = parseInt(document.getElementById('playerCount').value) || 99;
-            const selectedRegions = Array.from(document.querySelectorAll('input[name="region"]:checked')).map(cb => cb.value);
-            const selectedModes = Array.from(document.querySelectorAll('input[name="mode"]:checked')).map(cb => cb.value.toLowerCase());
-            const selectedMaps = Array.from(document.querySelectorAll('input[name="map"]:checked')).map(cb => cb.value.toLowerCase());
-
+            // Added 'include=server' to ensure detailed attributes are returned
             const url = 'https://api.battlemetrics.com/servers?filter%5Bgame%5D=squad&page%5Bsize%5D=50';
             
             fetch(url, { headers: { "Accept": "application/vnd.api+json" } })
             .then(response => response.json())
             .then(data => {
-                console.log("Full API Response:", data); // DEBUG: Look at this in your console
                 const allServers = data.data;
+                
+                // This will build our list of HTML server cards
+                let htmlOutput = `<h3>Results:</h3>`;
 
-                if (!allServers || allServers.length === 0) {
-                    resultsDiv.innerHTML = "No servers found in API response.";
-                    return;
-                }
+                allServers.forEach(server => {
+                    const attr = server.attributes;
+                    // Safely getting data even if some fields are missing
+                    const name = attr.name || "Unknown Server";
+                    const players = attr.players !== undefined ? attr.players : "N/A";
+                    const maxPlayers = attr.maxPlayers !== undefined ? attr.maxPlayers : "N/A";
+                    const country = attr.country || "Unknown";
 
-                const regionMap = {
-                    "Europe": ["DE", "FR", "GB", "NL", "SE", "FI", "PL", "ES", "IT", "RU", "UA", "CH", "AT", "DK", "NO", "BE", "IE", "PT", "CZ", "RO"],
-                    "North America": ["US", "CA", "MX"],
-                    "Asia": ["CN", "JP", "KR", "SG", "TW", "HK", "MY", "TH", "VN", "IN", "ID", "PH"],
-                    "Australia": ["AU", "NZ"],
-                    "Africa": ["ZA", "EG", "MA", "KE", "NG"],
-                    "South America": ["BR", "AR", "CL", "CO", "PE", "UY"]
-                };
-
-                const filteredServers = allServers.filter(server => {
-                    const attrs = server.attributes;
-                    // Debugging specific server objects
-                    console.log("Checking Server:", attrs.name, "| Country:", attrs.country, "| Map:", attrs.details?.map);
-                    
-                    if (attrs.players > maxPlayers) return false;
-                    
-                    if (selectedRegions.length > 0) {
-                        const isRegionMatch = selectedRegions.some(reg => regionMap[reg]?.includes(attrs.country));
-                        if (!isRegionMatch) return false;
-                    }
-                    
-                    // Add more console logs if these fail
-                    return true;
+                    // Construct a visual card for each server
+                    htmlOutput += `
+                        <div class="server-card" style="background:#333; padding:10px; margin:5px 0; border-radius:5px;">
+                            <div class="server-name" style="color:#4CAF50; font-weight:bold;">${name}</div>
+                            <div class="server-details">Players: ${players}/${maxPlayers} | Country: ${country}</div>
+                        </div>
+                    `;
                 });
 
-                resultsDiv.innerHTML = `Found ${filteredServers.length} servers matching your criteria. Check console for details.`;
+                resultsDiv.innerHTML = htmlOutput;
             })
             .catch(error => {
-                resultsDiv.innerHTML = "Error: " + error.message;
+                resultsDiv.innerHTML = "<strong>Error:</strong> Could not retrieve server list. " + error.message;
             });
-        }        
+        }
     </script>
 </body>
 </html>
