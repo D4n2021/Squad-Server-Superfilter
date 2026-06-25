@@ -53,6 +53,17 @@
 
     <div id="results"></div>
 
+        <div class="section" style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+            <label>
+                <strong>Include overwrite server-name string</strong>
+                <input type="text" id="includeStr" maxlength="8" style="margin-left:8px; width:90px;">
+            </label>
+            <label>
+                <strong>Exclude overwrite server-name string</strong>
+                <input type="text" id="excludeStr" maxlength="8" style="margin-left:8px; width:90px;">
+            </label>
+        </div>
+
         <div class="section">
             <h3>Server Regions</h3>
             <label><input type="checkbox" name="region" value="Europe"> Europe</label>
@@ -237,7 +248,9 @@
                 "Harju", "Skorpo", "Belaya", "Black Coast", "Fool's Road", "Gorodok", "Mestia", "Narva", "Yehorivka", 
                 "Manicouagan", "Goose Bay", "Sanxian Islands", "Al Basrah"
             ],
-            excludedCountries: []
+            excludedCountries: [],
+            includeStr: "",
+            excludeStr: ""
         };
 
         function saveState() {
@@ -247,7 +260,9 @@
                 regions: Array.from(document.querySelectorAll('input[name="region"]:checked')).map(cb => cb.value),
                 modes: Array.from(document.querySelectorAll('input[name="mode"]:checked')).map(cb => cb.value),
                 maps: Array.from(document.querySelectorAll('input[name="map"]:checked')).map(cb => cb.value),
-                excludedCountries: Array.from(document.querySelectorAll('input[name="excludedCountry"]:checked')).map(cb => cb.value)
+                excludedCountries: Array.from(document.querySelectorAll('input[name="excludedCountry"]:checked')).map(cb => cb.value),
+                includeStr: document.getElementById('includeStr').value,
+                excludeStr: document.getElementById('excludeStr').value
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         }
@@ -258,6 +273,8 @@
 
             document.getElementById('playerCount').value = state.playerCount;
             document.getElementById('maxPlayerCount').value = state.maxPlayerCount || "86";
+            document.getElementById('includeStr').value = state.includeStr || "";
+            document.getElementById('excludeStr').value = state.excludeStr || "";
 
             document.querySelectorAll('input[name="region"]').forEach(cb => {
                 cb.checked = state.regions.includes(cb.value);
@@ -342,6 +359,8 @@
 
             const minPlayersInput = parseInt(document.getElementById('playerCount').value) || 0;
             const maxPlayersInput = parseInt(document.getElementById('maxPlayerCount').value) || 98;
+            const includeStr = document.getElementById('includeStr').value.trim();
+            const excludeStr = document.getElementById('excludeStr').value.trim();
 
             const selectedRegions = Array.from(document.querySelectorAll('input[name="region"]:checked')).map(cb => cb.value);
             const excludedCountries = Array.from(document.querySelectorAll('input[name="excludedCountry"]:checked')).map(cb => cb.value);
@@ -360,7 +379,7 @@
                 const allServers = await fetchAllServers(resultsDiv);
                 resultsDiv.textContent = `Fetched ${allServers.length} servers total, filtering…`;
 
-                const filtered = allServers.filter(server => {
+                let filtered = allServers.filter(server => {
                     const attr = server.attributes;
                     
                     if ((attr.players || 0) < minPlayersInput) return false;
@@ -377,7 +396,31 @@
 
                     return true;
                 });
-                
+
+                // Include overwrite: merge in ALL servers matching the string, ignoring other filters
+                if (includeStr) {
+                    const includeLower = includeStr.toLowerCase();
+                    const includeMatches = allServers.filter(server =>
+                        server.attributes.name &&
+                        server.attributes.name.toLowerCase().includes(includeLower)
+                    );
+                    const filteredIds = new Set(filtered.map(s => s.id));
+                    for (const s of includeMatches) {
+                        if (!filteredIds.has(s.id)) {
+                            filtered.push(s);
+                        }
+                    }
+                }
+
+                // Exclude: strip any server whose name contains the exclude string
+                if (excludeStr) {
+                    const excludeLower = excludeStr.toLowerCase();
+                    filtered = filtered.filter(server =>
+                        !(server.attributes.name &&
+                          server.attributes.name.toLowerCase().includes(excludeLower))
+                    );
+                }
+
                 let htmlOutput = `<h3>Found ${filtered.length} servers (out of ${allServers.length} total fetched):</h3>`;
                 filtered.forEach(s => {
                     htmlOutput += `
