@@ -1,1 +1,1 @@
-# Squad-server-alerter
+# Squad-Server-Superfilter
